@@ -10,8 +10,13 @@
     "react": "16.6.1",
     "react-native": "0.57.5",
     "react-native-bluetooth-serial": "^1.0.0-rc1",
+    "react-native-elements": "^0.19.1",
+    "react-native-numeric-input": "^1.6.2",
+    "react-native-vector-icons": "^6.1.0",
     "react-navigation": "^3.0.0",
-    "react-router": "^4.3.1"
+    "react-numeric-input": "^2.2.3",
+    "react-router": "^4.3.1",
+    "render-if": "^0.1.1"
   },
   "devDependencies": {
     "babel-jest": "23.6.0",

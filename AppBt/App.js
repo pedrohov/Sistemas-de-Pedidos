@@ -4,15 +4,39 @@ import {
   StyleSheet,
   Text,
   View,
+  ScrollView,
   Button,
   FlatList,
   Switch,
   TouchableOpacity,
   ToastAndroid,
-  TextInput
+  TextInput,
+  Picker,
+  Animated,
+  Alert
 } from 'react-native';
+
 var _ = require('lodash');
 import BluetoothSerial from 'react-native-bluetooth-serial'
+import NumericInput from 'react-native-numeric-input'
+import {Icon} from 'react-native-elements'
+
+class Pedido extends Component {
+
+  /*static propTypes = {
+    nome: PropTypes.string.isRequired,
+    quantidade: PropTypes.number.isRequired,
+    status: PropTypes.string.isRequired
+  }*/
+
+  render() {
+    return (
+      <View>
+        <Text>{nome}</Text>
+      </View>
+    )
+  }
+}
 
 export default class App extends Component<{}> {
   
@@ -24,8 +48,17 @@ export default class App extends Component<{}> {
       devices: [],
       unpairedDevices: [],
       connected: false,
-      message: ""
+      nomeCliente: "",
+      message: "",
+      item: "",
+      quantidade: 1,
+      pedidos: [],
+      disabled: false,
+      id: -1,
+      status: ""
     }
+    this.animatedValue = new Animated.Value(0);
+    this.index = 0;
   }
 
   componentWillMount(){
@@ -57,9 +90,24 @@ export default class App extends Component<{}> {
 
       })
       BluetoothSerial.on('error', (err) => console.log(`Error: ${err.message}`))
-
+    
     })
 
+    BluetoothSerial.withDelimiter('\n').then(() => {
+        Promise.all([
+        BluetoothSerial.isEnabled(),
+        BluetoothSerial.list()
+      ])
+      .then((values) => {
+        const [ isEnabled, devices ] = values
+        this.setState({  devices })
+      })
+
+          BluetoothSerial.on('read', data => {
+            //Alert.alert('Dados recebidos', `DATA FROM BT: ${data.data}`);
+            this.handleReceivedMessage(data);
+         });
+    });
   }
 
   connect (device) {
@@ -68,8 +116,10 @@ export default class App extends Component<{}> {
     /*BluetoothSerial.connect('00:21:13:01:63:04')*/
     .then((res) => {
       console.log(`Connected to device ${device.name}`);
-      
+      this.setState({ connected: true })
       ToastAndroid.show(`Connected to device ${device.name}`, ToastAndroid.SHORT);
+      var msg = '{{CLIENTE}},' + "1" + ",Cliente 01";
+      this.sendMessage(msg);
     })
     .catch((err) => console.log((err.message)))
   }
@@ -110,26 +160,60 @@ export default class App extends Component<{}> {
     }
   }
 
-  toggleSwitch(){
-    BluetoothSerial.write("T")
-    .then((res) => {
-      console.log(res);
-      console.log('Successfuly wrote to device')
-      this.setState({ connected: true })
-    })
-    .catch((err) => console.log(err.message))
+  novoPedido () {
+    if(this.state.item !== '') {
+      var msg = '{{PEDIDO}},' + this.state.item + ',' + this.state.quantidade;
+      this.sendMessage(msg);
+    } else {
+      Alert.alert('Pedido não enviado', 'Selecione um item');
+    }
   }
 
-  sendMessage() {
-    BluetoothSerial.write(this.state.message)
-    .then((res) => {
-      this.setState({ connected: true })
-    })
-    .catch((err) => console.log(err.message))
+  addPedido () {
+    this.animatedValue.setValue(0)
+
+    let newPedido = { id: this.state.id, item: this.state.item, quantidade: this.state.quantidade, status: this.state.status }
+
+    this.setState({ disabled: true, pedidos: [...this.state.pedidos, newPedido]}, () => {
+      Animated.timing(
+        this.animatedValue, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true
+        }
+      ).start(() => {
+        this.index = this.index + 1;
+        this.setState({ disabled: false });
+      })
+    });
   }
 
-  _renderItem(item){
+  handleReceivedMessage(data) {
+    var msg = data.data;
+    var comando = msg.substring(0, 11);
 
+    if(comando === "{{0BUZZER}}") {
+      var indexFim = msg.indexOf(',', 12);
+      this.state.id = parseInt(msg.substring(12, indexFim));
+      var indexFimStatus = msg.indexOf('\n', indexFim);
+      this.state.status = msg.substring(indexFim + 1, indexFimStatus);
+
+      //Alert.alert('Alterou ', data.data);
+      this.addPedido();
+    }
+  }
+
+  sendMessage (msg) {
+    //if(this.state.connected) {
+      BluetoothSerial.write(msg)
+      .then((res) => {
+        this.setState({ connected: true })
+      })
+      .catch((err) => console.log(err.message))
+    //}
+  }
+
+  _renderItem (item){
     return(
         <TouchableOpacity onPress={() => this.connect(item.item)}>
           <View style={styles.deviceNameWrap}>
@@ -141,8 +225,34 @@ export default class App extends Component<{}> {
 
   render() {
 
+    const animationValue = this.animatedValue.interpolate(
+    {
+      inputRange: [ 0, 1],
+      outputRange: [ -59, 0]
+    });
+
+    let newArray = this.state.pedidos.map(( item, key ) =>
+    {
+        if(( key ) == this.index)
+        {
+            return(
+                <Animated.View key = { key } style = {[ styles.viewHolder, { opacity: this.animatedValue, transform: [{ translateY: animationValue }] }]}>
+                    <Text style={styles.pedido}>Pedido { item.item }: { item.quantidade } un.</Text>
+                </Animated.View>
+            );
+        }
+        else
+        {
+            return(
+                <View key = { key } style = { styles.viewHolder }>
+                    <Text style={styles.pedido}>Pedido { item.item }: { item.quantidade } un.</Text>
+                </View>
+            );
+        }
+    });
+
     return (
-      <View style={styles.container}>
+      <ScrollView style={styles.container}>
         <View style={styles.toolbar}>
           <View style={styles.toolbarRow}>
             <Text style={styles.toolbarTitle}>QUICK MENU</Text>
@@ -154,58 +264,82 @@ export default class App extends Component<{}> {
             </View>
           </View>
           <View style={styles.toolbarRow}>
-            <Text style={styles.toolbarSubTitle}>Dispositivos Bluetooth</Text>
+            <Text style={styles.toolbarSubTitle}>Cliente - Mesa 01</Text>
           </View>
         </View>
           
-          
-          <TouchableOpacity
-            style={styles.customBtn}
-            onPress={this.discoverAvailableDevices.bind(this)}
-          >
-            <Text style={styles.customBtnText}>Procurar por Dispositivos</Text>
-          </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.customBtn}
+          onPress={this.discoverAvailableDevices.bind(this)}
+        >
+          <Text style={styles.customBtnText}>Procurar por Dispositivos</Text>
+        </TouchableOpacity>
 
-          <FlatList
-            style={{flex:1}}
-            data={this.state.devices}
-            keyExtractor={item => item.id}
-            renderItem={(item) => this._renderItem(item)}
-          />
+        <FlatList
+          style={{flex:1}}
+          data={this.state.devices}
+          keyExtractor={item => item.id}
+          renderItem={(item) => this._renderItem(item)}
+        />
 
-          <View>
-            <TextInput
-              placeholder="Enviar mensagem"
-              onChangeText={
-                (message) => {
-                  this.setState({message})
-                  this.sendMessage()
-                }
-              }
-            />
+        <View>
+          <Text style={styles.header}>NOVO PEDIDO</Text>
+          <View style={{padding: 15}}>
+            <Text>Item</Text>
+            <Picker selectedValue={this.state.item} style={styles.picker}
+              onValueChange={(itemValue, itemIndex) => this.setState({item: itemValue})}>
+              <Picker.Item label="Menu" value="" style={styles.pickerItem} />
+              <Picker.Item label="Coxinha (R$ 3,50)" value="Coxinha" style={styles.pickerItem}/>
+              <Picker.Item label="Cigarrete (R$ 3,00)" value="Cigarrete" style={styles.pickerItem} />
+              <Picker.Item label="Café (R$ 0,50)" value="Cafe" style={styles.pickerItem} />
+            </Picker>
+
+            <Text>Quantidade</Text>
+            <NumericInput valueType="integer" minValue={1} maxValue={100} step={1} 
+              initValue={this.state.quantidade}
+              value={this.state.quantidade}
+              valueType='integer'
+              onChange={quantidade => this.setState({quantidade})} />        
+        
+            <TouchableOpacity 
+              style={styles.customBtnMargin}
+              onPress={this.novoPedido.bind(this)}>
+                <Icon style={styles.iconStyle} type='material-community' name='plus-circle' color='#52726f'/>
+                <Text style={styles.customBtnText}>NOVO PEDIDO</Text>
+            </TouchableOpacity>
           </View>
+        </View>
 
-          {/*
-          <Button
-            onPress={this.toggleSwitch.bind(this)}
-            title="Switch(On/Off)"
-            color="#EAEAEA"
-          />*/}
-
-      </View>
+        <ScrollView>
+          <Text style={styles.header}>PEDIDOS</Text>
+          <View>
+            { newArray }
+          </View>
+        </ScrollView>
+      </ScrollView >
     );
   }
 }
 
 const styles = StyleSheet.create({
+  picker: {
+    borderWidth: 1,
+    borderColor: '#000'
+  },
+  pickerItem: {
+    textAlign: 'center',
+    backgroundColor: '#f2f2f2',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EAEAEA'
+  },
   container: {
     flex: 1,
     backgroundColor: '#f7f7f7'
   },
   toolbar:{
-    paddingTop:30,
-    paddingBottom:30,
-    flexDirection:'column'
+    paddingTop: 30,
+    paddingBottom: 30,
+    flexDirection:'column',
   },
   toolbarRow:{
     flexDirection:'row'
@@ -230,19 +364,49 @@ const styles = StyleSheet.create({
   },
   deviceName: {
     fontSize: 17,
-    color: "black"
+    color: "#52726f",
+    textAlign: 'center'
   },
   deviceNameWrap: {
-    margin: 10,
-    borderBottomWidth:1
+    padding: 10,
+    backgroundColor: '#f2f2f2',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EAEAEA'
   },
   customBtn: {
     backgroundColor: '#EAEAEA',
     paddingBottom: 5,
-    paddingTop: 5
+    paddingTop: 5,
+  },
+  customBtnMargin: {
+    backgroundColor: '#EAEAEA',
+    paddingBottom: 5,
+    paddingTop: 5,
+    marginTop: 10
   },
   customBtnText: {
     color: '#52726f',
     textAlign: 'center',
+  },
+  header: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    backgroundColor: '#EAEAEA',
+    color: '#52726f',
+    paddingTop: 10,
+    paddingBottom: 10
+  },
+  viewHolder: {
+    textAlign: 'center',
+    backgroundColor: '#c9e8e4',
+  },
+  pedido: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f7f7f7'
+  },
+  iconStyle: {
+    color: '#52726f'
   }
 });

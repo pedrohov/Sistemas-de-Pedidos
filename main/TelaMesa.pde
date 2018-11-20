@@ -11,13 +11,26 @@ class TelaMesa {
   
   void update() {
     this.clickVoltar();
+    
+    // Atualizar pedidos/mouse:
+    for(int i = 0; i < mesaSel.pedidos.size(); i++) {
+      Pedido p = mesaSel.pedidos.get(i); 
+      p.hover();
+      boolean clicou = p.clicked();
+      if(clicou) {
+        pedidoSel = p;
+        mesaSel = p.mesa;
+        tela = 2;
+        p.hovered = false;
+      }
+    }
   }
   
   void draw() {
     // Nome do restaurante:
     drawTitle(res.nome, 20, 20);
     time();
-    drawHeader("Detalhes da Mesa " + mesaSel.nome, 20, 60);
+    drawHeader("DETALHES DA MESA " + mesaSel.nome, 20, 60);
     
     mesaSel.draw(100, 120);
     
@@ -40,7 +53,7 @@ class TelaMesa {
     if(mesaSel.cliente != null)
       drawTitle(mesaSel.nome + " - " + mesaSel.cliente.nome, 220, 140);
     else
-      drawTitle(mesaSel.nome, 220, 140);
+      drawTitle(str(mesaSel.nome), 220, 140);
       
     // Detalhes da mesa:
     image(iconSent , 220, 190);
@@ -54,7 +67,7 @@ class TelaMesa {
     if(mesaSel.cliente != null) {
       pedidos = mesaSel.cliente.qtd_pedidos;
       gasto = mesaSel.cliente.conta;
-      estadia = mesaSel.cliente.estadia;
+      estadia = mesaSel.cliente.estadia();
     }
     
     drawTextSmallLeft("Qtd. Pedidos: " + pedidos, 250, 190);
@@ -62,14 +75,13 @@ class TelaMesa {
     drawTextSmallLeft("Estadia: " + estadia, 250, 250);
     
     fill(82, 114, 111);
-    drawHeader("Pedido ", 220, 300);
+    drawHeader("Último Pedido: ", 220, 300);
        
-    if(mesaSel.pedido != null) {
-      String item = mesaSel.pedido.produto.nome;
-      int qtd = mesaSel.pedido.qtd;
-      float preco = mesaSel.pedido.produto.preco;
+    if(mesaSel.ultimoPedido != null) {
+      String item = mesaSel.ultimoPedido.produto.nome;
+      int qtd = mesaSel.ultimoPedido.qtd;
+      float preco = mesaSel.ultimoPedido.produto.preco;
     
-      Pedido sel = mesaSel.pedido;
       image(iconName , 220, 340);
       image(iconHash , 220, 370);
       image(iconPrice , 220, 400);
@@ -85,6 +97,10 @@ class TelaMesa {
       textAlign(LEFT, TOP);
       text("Não há nenhum pedido registrado.", 220, 330);
     }
+    
+    // Exibir pedidos da mesa:
+    drawTitle("Pedidos", 400, 140);
+    res.drawPedidosMesa(400, 190, mesaSel);
   }
   
   void clickVoltar() {
