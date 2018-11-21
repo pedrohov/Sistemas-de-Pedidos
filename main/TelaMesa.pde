@@ -71,7 +71,7 @@ class TelaMesa {
     }
     
     drawTextSmallLeft("Qtd. Pedidos: " + pedidos, 250, 190);
-    drawTextSmallLeft("Preço: " + gasto, 250, 220);
+    drawTextSmallLeft("Conta: " + gasto, 250, 220);
     drawTextSmallLeft("Estadia: " + estadia, 250, 250);
     
     fill(82, 114, 111);

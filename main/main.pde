@@ -97,7 +97,12 @@ void handleMessage(String[] msg) {
   // Novo pedido requisitado:
   else if(msg[0].equals("{{PEDIDO}}")) {
     // Cria novo pedido:
-    res.novoPedido(1, msg[1], int(msg[2]));
+    res.novoPedido(int(msg[1]), msg[2], int(msg[3]));
+  }
+  
+  // Pedido recebido:
+  else if(msg[0].equals("{{RECEBID}}")) {
+    res.pedidoRecebido(int(msg[1]));
   }
   
 }
@@ -120,21 +125,23 @@ void serialEvent(Serial myPort) {
     else {
       // Split the string at the commas:
       String msg[] = split(msgRecebida, ',');
-      print(msgRecebida);
+      println(msgRecebida);
       
-      if (msg.length > 0) {
+      if (msg.length >= 3) {
         handleMessage(msg);
         
         // Envia novas requisicoes ao arduino:
         if(msg[0].equals("{{PEDIDO}}")) {
           // Envia um alerta (buzzer),
           // Atualiza o Id e o Status do pedido:
-          myPort.write("{{0BUZZER}}," + str(res.pedidoIdSeed) + ",PENDENTE");
+          myPort.write("{{0BUZZER}}," + str(res.pedidoIdSeed - 1) + ",PENDENTE");
 
         } else if(msg[0].equals("{{CLIENTE}}")) { 
           // Atualiza a informacao do display:
           myPort.write("{{CLIENTE}}," + res.mesas.get(int(msg[1]) - 1).garcom);
           
+        } else if(msg[0].equals("{{RECEBID}}")) {
+          myPort.write("{{RECEBID}},");
         }
       }
     }

@@ -23,12 +23,6 @@ import {Icon} from 'react-native-elements'
 
 class Pedido extends Component {
 
-  /*static propTypes = {
-    nome: PropTypes.string.isRequired,
-    quantidade: PropTypes.number.isRequired,
-    status: PropTypes.string.isRequired
-  }*/
-
   render() {
     return (
       <View>
@@ -48,14 +42,15 @@ export default class App extends Component<{}> {
       devices: [],
       unpairedDevices: [],
       connected: false,
-      nomeCliente: "",
+      nomeCliente: "Cliente",
       message: "",
       item: "",
       quantidade: 1,
       pedidos: [],
       disabled: false,
       id: -1,
-      status: ""
+      status: "",
+      mesa: "1"
     }
     this.animatedValue = new Animated.Value(0);
     this.index = 0;
@@ -102,9 +97,7 @@ export default class App extends Component<{}> {
         const [ isEnabled, devices ] = values
         this.setState({  devices })
       })
-
           BluetoothSerial.on('read', data => {
-            //Alert.alert('Dados recebidos', `DATA FROM BT: ${data.data}`);
             this.handleReceivedMessage(data);
          });
     });
@@ -118,7 +111,7 @@ export default class App extends Component<{}> {
       console.log(`Connected to device ${device.name}`);
       this.setState({ connected: true })
       ToastAndroid.show(`Connected to device ${device.name}`, ToastAndroid.SHORT);
-      var msg = '{{CLIENTE}},' + "1" + ",Cliente 01";
+      var msg = '{{CLIENTE}},' + this.state.mesa + ",Cliente 01";
       this.sendMessage(msg);
     })
     .catch((err) => console.log((err.message)))
@@ -162,7 +155,8 @@ export default class App extends Component<{}> {
 
   novoPedido () {
     if(this.state.item !== '') {
-      var msg = '{{PEDIDO}},' + this.state.item + ',' + this.state.quantidade;
+      var msg = '{{PEDIDO}},' + this.state.mesa + ',' + this.state.item + ',' + this.state.quantidade;
+      this.addPedido();
       this.sendMessage(msg);
     } else {
       Alert.alert('Pedido não enviado', 'Selecione um item');
@@ -172,7 +166,7 @@ export default class App extends Component<{}> {
   addPedido () {
     this.animatedValue.setValue(0)
 
-    let newPedido = { id: this.state.id, item: this.state.item, quantidade: this.state.quantidade, status: this.state.status }
+    let newPedido = { id: this.state.id, item: this.state.item, quantidade: this.state.quantidade, status: "PENDENTE" }
 
     this.setState({ disabled: true, pedidos: [...this.state.pedidos, newPedido]}, () => {
       Animated.timing(
@@ -188,29 +182,58 @@ export default class App extends Component<{}> {
     });
   }
 
+  receberPedido (item) {
+    // Informa que o pedido despachado foi recebido pelo cliente:
+    if(item.id >= 0 && (item.status === "DESPACHADO")) {
+      var msg = '{{RECEBID}},' + item.id.toString() + ",";
+      item.status = "ENTREGUE";
+      this.sendMessage(msg);
+    }
+  }
+
   handleReceivedMessage(data) {
     var msg = data.data;
     var comando = msg.substring(0, 11);
 
     if(comando === "{{0BUZZER}}") {
       var indexFim = msg.indexOf(',', 12);
-      this.state.id = parseInt(msg.substring(12, indexFim));
-      var indexFimStatus = msg.indexOf('\n', indexFim);
-      this.state.status = msg.substring(indexFim + 1, indexFimStatus);
+      var id = parseInt(msg.substring(12, indexFim));
+      var indexFimStatus = msg.indexOf('\n', indexFim) - 1;
 
-      //Alert.alert('Alterou ', data.data);
-      this.addPedido();
+      // Atualiza o Id do pedido enviado:
+      this.state.status = msg.substring(indexFim + 1, indexFimStatus);
+      this.state.pedidos[this.state.pedidos.length - 1].id = id;
+      this.setState(this.state) // Renderiza a tela novamente.
+
+      //Alert.alert("Status do Pedido", `O seu pedido #${id} foi enviado.`);
+      
+    } else if(comando == "{{ALTERAC}}") {
+      var indexFim = msg.indexOf(',', 12);
+      var id = parseInt(msg.substring(12, indexFim));
+      var indexFimStatus = msg.indexOf('\n', indexFim) - 1;
+      var novoStatus = msg.substring(indexFim + 1, indexFimStatus);
+
+
+      for(var i = 0; i < this.state.pedidos.length; i++) {
+        if(this.state.pedidos[i].id === id) {
+          this.state.pedidos[i].status = novoStatus;
+          this.setState(this.state) // Renderiza a tela novamente.
+
+          Alert.alert("Status do Pedido", `O seu pedido #${id} foi ${novoStatus}`);
+          break;
+        }
+      }
     }
   }
 
   sendMessage (msg) {
-    //if(this.state.connected) {
+    if(this.state.connected) {
       BluetoothSerial.write(msg)
       .then((res) => {
         this.setState({ connected: true })
       })
       .catch((err) => console.log(err.message))
-    //}
+    }
   }
 
   _renderItem (item){
@@ -233,21 +256,34 @@ export default class App extends Component<{}> {
 
     let newArray = this.state.pedidos.map(( item, key ) =>
     {
-        if(( key ) == this.index)
-        {
-            return(
-                <Animated.View key = { key } style = {[ styles.viewHolder, { opacity: this.animatedValue, transform: [{ translateY: animationValue }] }]}>
-                    <Text style={styles.pedido}>Pedido { item.item }: { item.quantidade } un.</Text>
-                </Animated.View>
-            );
-        }
-        else
-        {
-            return(
-                <View key = { key } style = { styles.viewHolder }>
-                    <Text style={styles.pedido}>Pedido { item.item }: { item.quantidade } un.</Text>
-                </View>
-            );
+        if(item.id >= 0) {
+          if(( key ) === this.index)
+          {
+              return(
+                  <Animated.View key = { key } style = {[{ opacity: this.animatedValue, transform: [{ translateY: animationValue }] }]}>
+                      <Text style={(item.status == "PENDENTE")   ? styles.viewPendente   : 
+                                  ((item.status == "ATENDIDO")   ? styles.viewAtendido   : 
+                                  ((item.status == "DESPACHADO") ? styles.viewDespachado :
+                                  ((item.status == "ENTREGUE")   ? styles.viewEntregue   : styles.viewRecusado)))}>
+                                  #{item.id} - PEDIDO { item.item }: { item.quantidade } un.
+                      </Text>
+                  </Animated.View>
+              );
+          }
+          else
+          {
+              return(
+                  <View key = { key }>
+                      <Text style={(item.status == "PENDENTE")   ? styles.viewPendente   : 
+                                  ((item.status == "ATENDIDO")   ? styles.viewAtendido   : 
+                                  ((item.status == "DESPACHADO") ? styles.viewDespachado :
+                                  ((item.status == "ENTREGUE")   ? styles.viewEntregue   : styles.viewRecusado)))}
+                                  onPress={this.receberPedido.bind(this, item)}>
+                                  #{item.id} - PEDIDO { item.item }: { item.quantidade } un.
+                      </Text>
+                  </View>
+              );
+          }
         }
     });
 
@@ -264,7 +300,7 @@ export default class App extends Component<{}> {
             </View>
           </View>
           <View style={styles.toolbarRow}>
-            <Text style={styles.toolbarSubTitle}>Cliente - Mesa 01</Text>
+            <Text style={styles.toolbarSubTitle}>{this.state.nomeCliente} - Mesa {this.state.mesa}</Text>
           </View>
         </View>
           
@@ -281,6 +317,47 @@ export default class App extends Component<{}> {
           keyExtractor={item => item.id}
           renderItem={(item) => this._renderItem(item)}
         />
+
+        <View>
+          <Text style={styles.header}>INFORMAÇÕES DO CLIENTE</Text>
+          <View style={{padding: 15}}>
+            <Text>Mesa</Text>
+            <Picker selectedValue={this.state.mesa} style={styles.picker}
+              onValueChange={(value) => this.setState({mesa: value})}>
+              <Picker.Item label="Mesa 01" value="1" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 02" value="2" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 03" value="3" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 04" value="4" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 05" value="5" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 06" value="6" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 07" value="7" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 08" value="8" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 09" value="9" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 10" value="10" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 11" value="11" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 12" value="12" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 13" value="13" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 14" value="14" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 15" value="15" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 16" value="16" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 17" value="17" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 18" value="18" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 19" value="19" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 20" value="20" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 21" value="21" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 22" value="22" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 23" value="23" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 24" value="24" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 25" value="25" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 26" value="26" style={styles.pickerItem} />
+              <Picker.Item label="Mesa 27" value="27" style={styles.pickerItem} />
+            </Picker>
+            <Text>Cliente:</Text>
+            <TextInput style={styles.input}
+                onChangeText={(nomeCliente) => this.setState({nomeCliente})}
+                value={this.state.nomeCliente} />
+          </View>
+        </View>
 
         <View>
           <Text style={styles.header}>NOVO PEDIDO</Text>
@@ -335,6 +412,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f7f7f7'
+  },
+  input: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#c1c1c1'
   },
   toolbar:{
     paddingTop: 30,
@@ -397,9 +478,40 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 10
   },
-  viewHolder: {
+  viewPendente: {
     textAlign: 'center',
-    backgroundColor: '#c9e8e4',
+    backgroundColor: '#ffea51',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f7f7f7'
+  },
+  viewRecusado: {
+    textAlign: 'center',
+    backgroundColor: '#9c72ff',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f7f7f7'
+  },
+  viewAtendido: {
+    textAlign: 'center',
+    backgroundColor: '#a2ff51',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f7f7f7'
+  },
+  viewEntregue: {
+    textAlign: 'center',
+    backgroundColor: '#edffe5',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f7f7f7'
+  },
+  viewDespachado: {
+    textAlign: 'center',
+    backgroundColor: '#51d0ff',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f7f7f7'
   },
   pedido: {
     padding: 10,

@@ -95,7 +95,7 @@ class TelaPedido {
       image(coxinha, 480, 300);
     } else if(pedidoSel.produto.nome.equals("Cigarrete")) {
       image(cigarrete, 480, 300);
-    } else if(pedidoSel.produto.nome.equals("Café")) {
+    } else if(pedidoSel.produto.nome.equals("Cafe")) {
       image(cafe, 480, 300);
     }
     

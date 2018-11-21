@@ -20,13 +20,6 @@ class Restaurante {
     this.initGarcons();
     this.pedidoIdSeed = 0;
     this.pedidos = new ArrayList<Pedido>();
-    
-    /*initMesa(1, new Cliente("Pedro"), "Joao");
-    initMesa(5, new Cliente("Maria"), "Joao");
-    novoPedido(5, "Coxinha", 2);
-    novoPedido(5, "Cigarrete", 5);
-    novoPedido(5, "Cafe", 1);*/
-    
   }
   
   String getRandomGarcom() {
@@ -35,6 +28,20 @@ class Restaurante {
      garcons.remove(index);
      
      return garcom;
+  }
+  
+  void pedidoRecebido(int codigo) {
+    for(int i = 0; i < pedidos.size(); i++) {
+      Pedido pedido = pedidos.get(i);
+      if(pedido.id == codigo) {
+        
+        // Marca o pedido recebido como entregue:
+        pedido.status = StatusPedido.ENTREGUE;
+        
+        // Adiciona o valor do pedido a conta do cliente:
+        pedido.mesa.cliente.conta += pedido.produto.preco * pedido.qtd;
+      }
+    }
   }
   
   void novoPedido(int mesa, String produto, int qtd) {
@@ -60,8 +67,7 @@ class Restaurante {
     
     Pedido pedido = new Pedido(pedidoIdSeed, p, m, qtd);
     m.addPedido(pedido); // Adiciona novo pedido a mesa correspondente.
-    m.cliente.qtd_pedidos += 1;
-    m.cliente.conta += p.preco;
+    m.cliente.qtd_pedidos += 1; // Incrementa a quantidade de pedidos do cliente.
     pedidos.add(pedido); // Adiciona novo pedido ao restaurante.
     
     pedidoIdSeed = pedidoIdSeed + 1;
@@ -105,12 +111,14 @@ class Restaurante {
     int y = iniY;
     
     for(int i = 0; i < pedidos.size(); i++) {
-      pedidos.get(i).draw(x, y);
-      x += hspace;
-      
-      if(x > 700) {
-        x = iniX;
-        y += vspace;
+      if(pedidos.get(i).status != StatusPedido.ENTREGUE) {
+        pedidos.get(i).draw(x, y);
+        x += hspace;
+        
+        if(x > 700) {
+          x = iniX;
+          y += vspace;
+        }
       }
     }
   }
@@ -154,13 +162,13 @@ class Restaurante {
   
   void initGarcons() {
     garcons = new ArrayList<String>();
-    garcons.add("João");
+    garcons.add("Joao");
     garcons.add("Pedro");
-    garcons.add("José");
+    garcons.add("Jose");
     garcons.add("Maria");
     garcons.add("Rosvaldo");
-    garcons.add("Lúcia");
-    garcons.add("Mário");
+    garcons.add("Lucia");
+    garcons.add("Mario");
     garcons.add("Antônio");
   }
   

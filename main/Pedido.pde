@@ -34,10 +34,6 @@ class Pedido {
     
     this.x = x;
     this.y = y;
-    
-    // Nao mostra pedidos entregues:
-    if(status == StatusPedido.ENTREGUE)
-      return;
       
     // Sombra:
     noStroke();
@@ -52,12 +48,14 @@ class Pedido {
       fill(81, 208, 255); 
     } else if(status == StatusPedido.RECUSADO) {
       fill(156, 114, 255); 
+    } else if(status == StatusPedido.ENTREGUE) {
+      fill(205, 255, 193); 
+    } else if(tempoPassado() >= produto.tempoPreparo) {
+      fill(255, 81, 81);
     }
     
     if(hovered) {
       fill(82, 114, 111);
-    } else if(tempoPassado() > produto.tempoPreparo) {
-      fill(255, 81, 81);
     }
     
     // Retangulo:
@@ -90,7 +88,7 @@ class Pedido {
       textSize(12);
       text(tempoPassado(), x + 103, y + 14);*/
       textSize(11);
-      text(tempoPassado() + "min", x + 80, y + 3);
+      text(tempoPassado() + " min", x + 80, y + 3);
   }
   
   void hover()  {

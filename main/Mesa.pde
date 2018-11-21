@@ -43,7 +43,7 @@ class Mesa {
     
     // Desenha status pedido:
     if(hasPedidoPendente()) {
-        if(ultimoPedido.tempoPassado() > ultimoPedido.produto.tempoPreparo)
+        if(ultimoPedido.tempoPassado() >= ultimoPedido.produto.tempoPreparo)
           fill(255, 81, 81);
         else
           fill(255, 234, 81);
@@ -67,7 +67,7 @@ class Mesa {
     else
       fill(82, 114, 111);
       
-    drawTitleCENTER(str(this.nome), x + this.size / 2, y + this.size / 2);
+    drawTitleCENTER(str(this.nome), x + this.size / 2, y + this.size / 2 - 5);
     
     // Tempo do pedido:
     if(ultimoPedido != null) {
