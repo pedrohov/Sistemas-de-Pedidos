@@ -40,7 +40,9 @@ class Pedido {
     fill(82, 114, 111);
     rect(x, y + 3, pWidth, pHeight, 5);
     
-    if(status == StatusPedido.PENDENTE) {
+    if(tempoPassado() >= produto.tempoPreparo) {
+      fill(255, 81, 81);
+    } else if(status == StatusPedido.PENDENTE) {
       fill(255, 234, 81);
     } else if(status == StatusPedido.ATENDIDO) {
       fill(162, 255, 81); 
@@ -50,8 +52,6 @@ class Pedido {
       fill(156, 114, 255); 
     } else if(status == StatusPedido.ENTREGUE) {
       fill(205, 255, 193); 
-    } else if(tempoPassado() >= produto.tempoPreparo) {
-      fill(255, 81, 81);
     }
     
     if(hovered) {

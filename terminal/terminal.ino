@@ -22,9 +22,6 @@ void setup() {
   lcd.print("Use o App para");
   lcd.setCursor(0, 1);
   lcd.print("fazer pedidos.");
-
-  // Determina a velocidade do motor:
-  esteira.setSpeed(255);
   
   // Inicializa a serial do arduino:
   Serial.begin(9600);
@@ -90,6 +87,7 @@ bool handleMessage(String msg) {
 
     if(novoStatus == "DESPACHADO") {
       // Aciona o motor:
+      esteira.setSpeed(255);
       esteira.run(FORWARD);
     }
   }

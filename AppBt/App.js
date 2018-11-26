@@ -106,12 +106,11 @@ export default class App extends Component<{}> {
   connect (device) {
     this.setState({ connecting: true })
     BluetoothSerial.connect(device.id)
-    /*BluetoothSerial.connect('00:21:13:01:63:04')*/
     .then((res) => {
       console.log(`Connected to device ${device.name}`);
       this.setState({ connected: true })
       ToastAndroid.show(`Connected to device ${device.name}`, ToastAndroid.SHORT);
-      var msg = '{{CLIENTE}},' + this.state.mesa + ",Cliente 01";
+      var msg = '{{CLIENTE}},' + this.state.mesa + "," + this.state.nomeCliente;
       this.sendMessage(msg);
     })
     .catch((err) => console.log((err.message)))
@@ -289,6 +288,8 @@ export default class App extends Component<{}> {
 
     return (
       <ScrollView style={styles.container}>
+        
+
         <View style={styles.toolbar}>
           <View style={styles.toolbarRow}>
             <Text style={styles.toolbarTitle}>QUICK MENU</Text>
@@ -303,20 +304,6 @@ export default class App extends Component<{}> {
             <Text style={styles.toolbarSubTitle}>{this.state.nomeCliente} - Mesa {this.state.mesa}</Text>
           </View>
         </View>
-          
-        <TouchableOpacity
-          style={styles.customBtn}
-          onPress={this.discoverAvailableDevices.bind(this)}
-        >
-          <Text style={styles.customBtnText}>Procurar por Dispositivos</Text>
-        </TouchableOpacity>
-
-        <FlatList
-          style={{flex:1}}
-          data={this.state.devices}
-          keyExtractor={item => item.id}
-          renderItem={(item) => this._renderItem(item)}
-        />
 
         <View>
           <Text style={styles.header}>INFORMAÇÕES DO CLIENTE</Text>
@@ -358,6 +345,20 @@ export default class App extends Component<{}> {
                 value={this.state.nomeCliente} />
           </View>
         </View>
+          
+        <TouchableOpacity
+          style={styles.customBtn}
+          onPress={this.discoverAvailableDevices.bind(this)}
+        >
+          <Text style={styles.customBtnText}>Procurar por Dispositivos</Text>
+        </TouchableOpacity>
+
+        <FlatList
+          style={{flex:1}}
+          data={this.state.devices}
+          keyExtractor={item => item.id}
+          renderItem={(item) => this._renderItem(item)}
+        />
 
         <View>
           <Text style={styles.header}>NOVO PEDIDO</Text>
